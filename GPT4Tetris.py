@@ -266,28 +266,26 @@ class Tetromino:
 
     def draw(self, surface, ghost=False):
         """Draw the tetromino on the given surface."""
-        color = (max(self.color[0] - 50, 0), max(self.color[1] - 50, 0), max(self.color[2] - 50, 0))
+        color = self.color
         if ghost:
-            ghost_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-            alpha_color = color + (100,)
+            alpha_color = (color[0] // 2, color[1] // 2, color[2] // 2, 127)  # Half brightness and 50% transparent
+            ghost_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)  # Create a transparent surface
+            target_surface = ghost_surface  # Draw on the ghost surface
         else:
             alpha_color = color
-        target_surface = ghost_surface if ghost else surface
+            target_surface = surface  # Draw on the main surface
+
         for row in range(len(self.shape)):
             for col in range(len(self.shape[row])):
                 if self.shape[row][col]:
-                    pygame.draw.rect(target_surface, alpha_color,
-                                     (BLOCK_SIZE * (self.x + col), BLOCK_SIZE * (self.y + row), BLOCK_SIZE, BLOCK_SIZE))
+                    pygame.draw.rect(target_surface, alpha_color, (BLOCK_SIZE * (self.x + col), BLOCK_SIZE * (self.y + row), BLOCK_SIZE, BLOCK_SIZE))
                     if not ghost:
-                        border_color = tuple(max(c - 50, 0) for c in self.color)
-                        pygame.draw.line(target_surface, border_color,
-                                         (BLOCK_SIZE * (self.x + col), BLOCK_SIZE * (self.y + row)),
-                                         (BLOCK_SIZE * (self.x + col + 1), BLOCK_SIZE * (self.y + row)), 2)
-                        pygame.draw.line(target_surface, border_color,
-                                         (BLOCK_SIZE * (self.x + col), BLOCK_SIZE * (self.y + row)),
-                                         (BLOCK_SIZE * (self.x + col), BLOCK_SIZE * (self.y + row + 1)), 2)
+                        border_color = tuple(max(c - 50, 0) for c in color)
+                        pygame.draw.line(target_surface, border_color, (BLOCK_SIZE * (self.x + col), BLOCK_SIZE * (self.y + row)), (BLOCK_SIZE * (self.x + col + 1), BLOCK_SIZE * (self.y + row)), 2)
+                        pygame.draw.line(target_surface, border_color, (BLOCK_SIZE * (self.x + col), BLOCK_SIZE * (self.y + row)), (BLOCK_SIZE * (self.x + col), BLOCK_SIZE * (self.y + row + 1)), 2)
+
         if ghost:
-            surface.blit(ghost_surface, (0, 0))
+            surface.blit(ghost_surface, (0, 0))  # Blit the ghost surface onto the main surface
 
     def draw_preview(self, surface, scale=0.50):
         """Draw a scaled-down preview of the tetromino."""
@@ -437,8 +435,17 @@ def game_loop():
             star.draw(screen)
         board.draw(screen)
         current_tetromino.draw(screen)
-        current_tetromino.draw(screen, ghost=True)
         scoreboard.draw(screen)
+
+        # Calculate ghost tetromino's drop position
+        drop_position = current_tetromino.get_drop_position()
+        ghost_tetromino = Tetromino(current_tetromino.shape)
+        ghost_tetromino.x = current_tetromino.x
+        ghost_tetromino.y = drop_position  
+        ghost_tetromino.color = current_tetromino.color
+
+        # Draw the ghost tetromino
+        ghost_tetromino.draw(screen, ghost=True)   
 
         if lines_cleared > 0:
             score_increase = lines_cleared ** 2 * 100
@@ -462,7 +469,6 @@ def game_loop():
             for star in stars:
                 star.update()
                 star.draw(screen)
-            #board.draw(screen)
             game_over_animation.update()
             game_over_animation.draw(screen)
             clock.tick(60)
